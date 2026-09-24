@@ -1,0 +1,26 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan*
+crash.log
+crash.*.log
+.terraform.tfstate.lock.info
+# Local-only overrides (e.g. local backend for dev plans) - never committed
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# NOTE: .terraform.lock.hcl IS committed (provider pinning / supply-chain integrity)
+
+# Kubernetes / creds
+kubeconfig*
+*.kubeconfig
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
