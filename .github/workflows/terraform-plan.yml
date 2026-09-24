@@ -1,0 +1,60 @@
+name: terraform-plan
+
+on:
+  push:
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform-plan.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required to request the GitHub OIDC token
+
+concurrency:
+  group: terraform-plan-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TF_VERSION: "~1.13.0"
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  AWS_REGION: us-east-2
+  STACK_DIR: terraform/envs/poc
+
+jobs:
+  plan:
+    name: terraform plan (poc)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials (OIDC -> plan role)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          role-session-name: gha-plan-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: terraform init
+        working-directory: ${{ env.STACK_DIR }}
+        run: terraform init
+
+      - name: terraform plan
+        working-directory: ${{ env.STACK_DIR }}
+        run: terraform plan -lock-timeout=5m -out=tfplan
+
+      - name: Publish plan to job summary
+        working-directory: ${{ env.STACK_DIR }}
+        run: |
+          {
+            echo "### terraform plan - poc (\`${GITHUB_REF_NAME}\`)"
+            echo '```'
+            terraform show -no-color tfplan | tail -c 60000
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

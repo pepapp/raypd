@@ -1,12 +1,10 @@
 name: terraform-lint
 
-# Static checks only - no AWS credentials are used.
 on:
   push:
     paths:
       - "terraform/**"
       - "bootstrap/**"
-      - ".tflint.hcl"
       - ".github/workflows/terraform-lint.yml"
   workflow_dispatch:
 
