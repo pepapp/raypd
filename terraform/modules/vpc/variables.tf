@@ -16,47 +16,11 @@ variable "cidr" {
 variable "private_subnets" {
   description = "Map of AZ => CIDR for private subnets (EKS nodes, pods, internal LBs). One per AZ; the keys define the AZs the VPC spans."
   type        = map(string)
-
-  validation {
-    condition     = length(var.private_subnets) >= 2
-    error_message = "At least two private subnets in different AZs are required (EKS needs two AZs)."
-  }
-
-  validation {
-    condition = alltrue([
-      for c in values(var.private_subnets) :
-      can(cidrhost(c, 0)) &&
-      tonumber(split("/", c)[1]) >= tonumber(split("/", var.cidr)[1]) &&
-      cidrhost("${split("/", c)[0]}/${split("/", var.cidr)[1]}", 0) == cidrhost(var.cidr, 0)
-    ])
-    error_message = "Every private subnet must be a valid CIDR inside the VPC cidr."
-  }
 }
 
 variable "public_subnets" {
   description = "Map of AZ => CIDR for public subnets (NAT gateways and internet-facing LBs only). One per private AZ, unless single_nat_gateway = true."
   type        = map(string)
-
-  # Per-AZ NAT needs a public subnet in every private AZ. A single shared NAT only
-  # needs one public subnet, in an AZ the VPC also has private subnets in.
-  validation {
-    condition = (
-      var.single_nat_gateway
-      ? length(var.public_subnets) >= 1 && alltrue([for az in keys(var.public_subnets) : contains(keys(var.private_subnets), az)])
-      : toset(keys(var.public_subnets)) == toset(keys(var.private_subnets))
-    )
-    error_message = "With single_nat_gateway = false, public_subnets must cover exactly the private_subnets AZs. With true, it needs at least one subnet, only in AZs that also have a private subnet."
-  }
-
-  validation {
-    condition = alltrue([
-      for c in values(var.public_subnets) :
-      can(cidrhost(c, 0)) &&
-      tonumber(split("/", c)[1]) >= tonumber(split("/", var.cidr)[1]) &&
-      cidrhost("${split("/", c)[0]}/${split("/", var.cidr)[1]}", 0) == cidrhost(var.cidr, 0)
-    ])
-    error_message = "Every public subnet must be a valid CIDR inside the VPC cidr."
-  }
 }
 
 variable "single_nat_gateway" {

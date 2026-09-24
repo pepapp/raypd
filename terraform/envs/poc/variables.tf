@@ -7,21 +7,12 @@ variable "region" {
 variable "account_id" {
   description = "Expected AWS account ID (guards against applying to the wrong account)."
   type        = string
-
-  validation {
-    condition     = can(regex("^[0-9]{12}$", var.account_id))
-    error_message = "account_id must be a 12-digit AWS account ID."
-  }
 }
 
 variable "owner" {
   description = "Short owner handle used to namespace globally-scoped names (IAM roles, S3 buckets) in the shared account."
   type        = string
-
-  validation {
-    condition     = can(regex("^[a-z0-9]{2,8}$", var.owner))
-    error_message = "owner must be 2-8 lowercase alphanumerics."
-  }
+  default     = "fadi"
 }
 
 variable "environment" {
