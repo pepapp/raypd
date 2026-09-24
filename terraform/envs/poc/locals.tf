@@ -5,21 +5,21 @@ locals {
     "vpc-gateway" = {
       region             = "us-east-2"
       azs                = ["us-east-2a", "us-east-2b"]
-      cidr               = "10.10.0.0/16" 
+      cidr               = "10.10.0.0/16"
       single_nat_gateway = false
 
       # addr space
       # private: 10.10.0.0   -> 10.10.31.255
       # public:  10.10.240.0 -> 10.10.241.255
-      public_subnet_tags  = { 
-        "kubernetes.io/role/elb"            = "1" 
+      public_subnet_tags = {
+        "kubernetes.io/role/elb"            = "1"
         "kubernetes.io/cluster/eks-gateway" = "shared"
       }
-      private_subnet_tags = { 
-        "kubernetes.io/role/internal-elb"   = "1" 
+      private_subnet_tags = {
+        "kubernetes.io/role/internal-elb"   = "1"
         "kubernetes.io/cluster/eks-gateway" = "shared"
       }
-      tags  = { Domain = "gateway" }
+      tags = { Domain = "gateway" }
     }
 
     "vpc-backend" = {
@@ -28,17 +28,17 @@ locals {
       cidr               = "10.11.0.0/16"
       single_nat_gateway = false
 
-     # addr space
+      # addr space
       # private: 10.11.0.0   -> 10.11.31.255
       # public:  10.11.240.0 -> 10.11.241.255
-      public_subnet_tags  = {
+      public_subnet_tags = {
         "kubernetes.io/cluster/eks-backend" = "shared"
       }
-      private_subnet_tags = { 
+      private_subnet_tags = {
         "kubernetes.io/role/internal-elb"   = "1"
         "kubernetes.io/cluster/eks-backend" = "shared"
       }
-      tags  = { Domain = "backend" }
+      tags = { Domain = "backend" }
     }
   }
 

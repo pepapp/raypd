@@ -1,5 +1,5 @@
 locals {
-  nat_azs = var.single_nat_gateway ? [sort(keys(var.public_subnets))[0]] : sort(keys(var.public_subnets))
+  nat_azs    = var.single_nat_gateway ? [sort(keys(var.public_subnets))[0]] : sort(keys(var.public_subnets))
   nat_az_for = { for az in keys(var.private_subnets) : az => var.single_nat_gateway ? local.nat_azs[0] : az }
 }
 
