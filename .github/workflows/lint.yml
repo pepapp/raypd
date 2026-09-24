@@ -5,6 +5,7 @@ on:
     paths:
       - "terraform/**"
       - "bootstrap/**"
+      - "scripts/stacks.py"
       - ".github/workflows/lint.yml"
   workflow_dispatch:
 
@@ -29,13 +30,30 @@ jobs:
       - name: Check formatting
         run: terraform fmt -check -recursive -diff
 
+  # Finds every stack (dir with backend.tf) under terraform/, ordered by tf_info depends_on.
+  # Fails here if a depends_on points at an unknown stack or forms a cycle.
+  stacks:
+    name: discover stacks
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.discover.outputs.list }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: discover
+        run: |
+          list=$(python3 scripts/stacks.py | jq -c '. + ["bootstrap"]')
+          echo "Stacks: $list"
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+
   validate:
-    name: validate + tflint (${{ matrix.stack }})
+    name: validate (${{ matrix.stack }})
+    needs: stacks
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        stack: [bootstrap, terraform/envs/poc]
+        stack: ${{ fromJSON(needs.stacks.outputs.list) }}
     steps:
       - uses: actions/checkout@v4
 

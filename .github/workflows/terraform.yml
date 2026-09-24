@@ -1,12 +1,10 @@
 name: terraform
 
-# plan  : every push, any branch  -> read-only plan role (OIDC)
-# apply : push to master only     -> apply role (OIDC, trust pinned to refs/heads/master)
-#         applies the exact saved plan produced by the plan job
 on:
   push:
     paths:
       - "terraform/**"
+      - "scripts/stacks.py"
       - ".github/workflows/terraform.yml"
   workflow_dispatch:
 
@@ -19,15 +17,48 @@ env:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
   AWS_REGION: us-east-2
-  STACK_DIR: terraform/envs/poc
 
 jobs:
-  plan:
-    name: terraform plan
+  stacks:
+    name: discover stacks
     runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.discover.outputs.list }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history, to diff against the previous tip of the branch
 
+      - id: discover
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
+            echo "Changed files:"; echo "$changed"
+            if echo "$changed" | grep -qxE 'scripts/stacks\.py|\.github/workflows/terraform\.yml'; then
+              list=$(python3 scripts/stacks.py)                        # pipeline itself changed: run all
+            else
+              list=$(echo "$changed" | python3 scripts/stacks.py --changed)
+            fi
+          else
+            list=$(python3 scripts/stacks.py)                          # manual run / new branch / force push
+          fi
+          echo "Stacks to run (in order): $list"
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+
+  plan:
+    name: plan (${{ matrix.stack }})
+    needs: stacks
+    if: needs.stacks.outputs.list != '[]' # nothing affected -> nothing to plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: ${{ fromJSON(needs.stacks.outputs.list) }}
+    # One plan per stack per branch at a time; never cancel mid-run (would leave a stale lock).
     concurrency:
-      group: terraform-plan-${{ github.ref }}
+      group: terraform-plan-${{ github.ref }}-${{ matrix.stack }}
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
@@ -45,31 +76,22 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: terraform init
-        working-directory: ${{ env.STACK_DIR }}
+        working-directory: ${{ matrix.stack }}
         run: terraform init
 
       - name: terraform plan
-        working-directory: ${{ env.STACK_DIR }}
-        run: terraform plan -lock-timeout=5m -out=tfplan
-
-      # Hand the exact plan to the apply job. Short retention: plan files can contain resource attributes.
-      - name: Upload plan
-        if: github.ref == 'refs/heads/master'
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan-poc
-          path: ${{ env.STACK_DIR }}/tfplan
-          retention-days: 1
+        working-directory: ${{ matrix.stack }}
+        run: terraform plan -lock-timeout=5m
 
   apply:
-    name: terraform apply
-    needs: plan
+    name: apply (all stacks, in order)
+    needs: [stacks, plan]
     # Must match bootstrap var.github_apply_branch - the apply role's trust only accepts this ref.
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' && needs.stacks.outputs.list != '[]'
     runs-on: ubuntu-latest
     # Only one apply at a time, across all runs.
     concurrency:
-      group: terraform-apply-poc
+      group: terraform-apply
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
@@ -87,18 +109,21 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-duration-seconds: 7200 # EKS creation can exceed the 1h default
 
-      - name: terraform init
-        working-directory: ${{ env.STACK_DIR }}
-        run: terraform init
-
-      - name: Download plan
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan-poc
-          path: ${{ env.STACK_DIR }}
-
-      # Applying a saved plan needs no -auto-approve, and Terraform refuses it if state
-      # changed since the plan was made ("saved plan is stale").
-      - name: terraform apply
-        working-directory: ${{ env.STACK_DIR }}
-        run: terraform apply -lock-timeout=5m tfplan
+      # For each stack in dependency order: plan, then apply only if there are changes.
+      # -detailed-exitcode: 0 = no changes (skip), 2 = changes (apply), 1 = error (stop).
+      - name: terraform apply (dependency order)
+        env:
+          STACKS: ${{ needs.stacks.outputs.list }}
+        run: |
+          for dir in $(echo "$STACKS" | jq -r '.[]'); do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init
+            rc=0
+            terraform -chdir="$dir" plan -lock-timeout=5m -detailed-exitcode -out=tfplan || rc=$?
+            case $rc in
+              0) echo "No changes in $dir - skipping apply" ;;
+              2) terraform -chdir="$dir" apply -lock-timeout=5m tfplan ;;
+              *) echo "::error::plan failed in $dir"; exit "$rc" ;;
+            esac
+            echo "::endgroup::"
+          done

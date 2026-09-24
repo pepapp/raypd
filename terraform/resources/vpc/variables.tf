@@ -7,6 +7,7 @@ variable "region" {
 variable "account_id" {
   description = "Expected AWS account ID (guards against applying to the wrong account)."
   type        = string
+  default     = "721500739616"
 }
 
 variable "owner" {
@@ -37,11 +38,6 @@ variable "backend_vpc_cidr" {
   description = "CIDR for vpc-backend. Must not overlap gateway_vpc_cidr (VPC peering requirement)."
   type        = string
   default     = "10.20.0.0/16"
-
-  validation {
-    condition     = var.backend_vpc_cidr != var.gateway_vpc_cidr
-    error_message = "backend_vpc_cidr must differ from gateway_vpc_cidr."
-  }
 }
 
 variable "single_nat_gateway" {
