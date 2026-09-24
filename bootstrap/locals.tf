@@ -1,6 +1,6 @@
 locals {
   name_prefix       = "sentinel-${var.owner}"
-  state_bucket_name = "${local.name_prefix}-tfstate-${var.account_id}"
+  state_bucket_name = "${local.name_prefix}-tfstate"
   state_bucket_arn  = "arn:aws:s3:::${local.state_bucket_name}"
 
   # Must match the name built in terraform/envs/poc (module "flow_logs_bucket").

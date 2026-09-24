@@ -1,0 +1,104 @@
+name: terraform
+
+# plan  : every push, any branch  -> read-only plan role (OIDC)
+# apply : push to master only     -> apply role (OIDC, trust pinned to refs/heads/master)
+#         applies the exact saved plan produced by the plan job
+on:
+  push:
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required to request the GitHub OIDC token
+
+env:
+  TF_VERSION: "~1.13.0"
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  AWS_REGION: us-east-2
+  STACK_DIR: terraform/envs/poc
+
+jobs:
+  plan:
+    name: terraform plan
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: terraform-plan-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials (OIDC -> plan role)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          role-session-name: gha-plan-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: terraform init
+        working-directory: ${{ env.STACK_DIR }}
+        run: terraform init
+
+      - name: terraform plan
+        working-directory: ${{ env.STACK_DIR }}
+        run: terraform plan -lock-timeout=5m -out=tfplan
+
+      # Hand the exact plan to the apply job. Short retention: plan files can contain resource attributes.
+      - name: Upload plan
+        if: github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-poc
+          path: ${{ env.STACK_DIR }}/tfplan
+          retention-days: 1
+
+  apply:
+    name: terraform apply
+    needs: plan
+    # Must match bootstrap var.github_apply_branch - the apply role's trust only accepts this ref.
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    # Only one apply at a time, across all runs.
+    concurrency:
+      group: terraform-apply-poc
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials (OIDC -> apply role)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_APPLY_ROLE_ARN }}
+          role-session-name: gha-apply-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 7200 # EKS creation can exceed the 1h default
+
+      - name: terraform init
+        working-directory: ${{ env.STACK_DIR }}
+        run: terraform init
+
+      - name: Download plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-poc
+          path: ${{ env.STACK_DIR }}
+
+      # Applying a saved plan needs no -auto-approve, and Terraform refuses it if state
+      # changed since the plan was made ("saved plan is stale").
+      - name: terraform apply
+        working-directory: ${{ env.STACK_DIR }}
+        run: terraform apply -lock-timeout=5m tfplan

@@ -1,11 +1,11 @@
-name: terraform-lint
+name: lint
 
 on:
   push:
     paths:
       - "terraform/**"
       - "bootstrap/**"
-      - ".github/workflows/terraform-lint.yml"
+      - ".github/workflows/lint.yml"
   workflow_dispatch:
 
 permissions:
