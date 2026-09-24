@@ -44,7 +44,7 @@ resource "aws_eks_cluster" "this" {
 # --------------------------------------------------------------------------
 locals {
   addons_before_nodes = {
-    "vpc-cni" = jsonencode({ enableNetworkPolicy = "true" }) # enforce Kubernetes NetworkPolicy
+    "vpc-cni"    = jsonencode({ enableNetworkPolicy = "true" }) # enforce Kubernetes NetworkPolicy
     "kube-proxy" = null
   }
   addons_after_nodes = ["coredns", "eks-pod-identity-agent"]
