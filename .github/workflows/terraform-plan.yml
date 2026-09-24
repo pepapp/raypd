@@ -9,7 +9,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # required to request the GitHub OIDC token
+  id-token: write
 
 concurrency:
   group: terraform-plan-${{ github.ref }}

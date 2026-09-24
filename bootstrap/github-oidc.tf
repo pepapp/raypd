@@ -116,7 +116,7 @@ data "aws_iam_policy_document" "plan" {
 }
 
 resource "aws_iam_role" "gha_plan" {
-  name                 = "${local.name_prefix}-gha-plan"
+  name                 = "${local.name_prefix}-gha-plan-v2"
   description          = "GitHub Actions (${var.github_repo}) - terraform plan / validation, read-only"
   assume_role_policy   = data.aws_iam_policy_document.trust_plan.json
   max_session_duration = 3600
@@ -285,7 +285,7 @@ data "aws_iam_policy_document" "apply" {
 }
 
 resource "aws_iam_role" "gha_apply" {
-  name                 = "${local.name_prefix}-gha-apply"
+  name                 = "${local.name_prefix}-gha-apply-v2"
   description          = "GitHub Actions ${var.github_repo} ONLY from ${var.github_apply_branch} terraform apply + k8s deploy"
   assume_role_policy   = data.aws_iam_policy_document.trust_apply.json
   max_session_duration = 7200 # two EKS clusters + node groups can exceed 1h on a cold apply

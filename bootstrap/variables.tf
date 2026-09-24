@@ -19,7 +19,7 @@ variable "owner" {
 variable "github_repo" {
   description = "GitHub repository allowed to assume the CI roles, as owner/name. Case-sensitive: must match the OIDC 'sub' claim exactly."
   type        = string
-  default     = "pepapp/raypd"
+  default     = "pepapp@48590188/raypd@1383292829"
 }
 
 variable "github_apply_branch" {
