@@ -7,10 +7,10 @@ locals {
   registry     = "${local.account_id}.dkr.ecr.${local.region}.amazonaws.com"
 
   service_stack = {
-    # haproxy = {
-    #   version   = "0.1.0-gb3998d5"
-    #   namespace = "proxy"
-    # }
+    haproxy = {
+      version   = "1.0.0-ge74f787"
+      namespace = "proxy"
+    }
   }
 
   default_tags = {
