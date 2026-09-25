@@ -1,0 +1,16 @@
+name: web
+type: deployment
+
+replicas: 2
+
+port: 8080
+
+service:
+  port: 80
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 128Mi

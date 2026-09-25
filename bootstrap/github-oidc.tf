@@ -220,6 +220,12 @@ data "aws_iam_policy_document" "apply" {
   }
 
   statement {
+    sid       = "ReadEksNodegroupServiceLinkedRole"
+    actions   = ["iam:GetRole"]
+    resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/eks-nodegroup.amazonaws.com/AWSServiceRoleForAmazonEKSNodegroup"]
+  }
+
+  statement {
     sid = "ManageWorkloadRoles"
     actions = [
       "iam:CreateRole",
