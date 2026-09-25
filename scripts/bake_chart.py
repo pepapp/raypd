@@ -32,9 +32,10 @@ out = f"build/{service}"
 shutil.rmtree(out, ignore_errors=True)
 shutil.copytree(chart_dir, out)
 
-# chart defaults <- service defaults <- the image built above
 values = merge(load(f"{chart_dir}/values.yaml"), defaults)
-values = merge(values, {"name": service, "image": {"repository": image, "tag": tag}})
+if os.path.exists(f"services/{service}/infra/Dockerfile"):
+    values = merge(values, {"name": service, "image": {"repository": image, "tag": tag}})
+
 dump(values, f"{out}/values.yaml")
 
 chart = load(f"{chart_dir}/Chart.yaml")

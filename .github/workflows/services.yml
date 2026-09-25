@@ -74,16 +74,19 @@ jobs:
           DEFAULTS="services/$SERVICE/infra/defaults.yaml"
           CHART_DIR="helms/$(yq '.type' "$DEFAULTS")"
           TAG="${GITHUB_SHA::7}"
+          if [ -f "services/$SERVICE/infra/Dockerfile" ]; then BUILD=true; else BUILD=false; fi
           {
             echo "DEFAULTS=$DEFAULTS"
             echo "CHART_DIR=$CHART_DIR"
             echo "TAG=$TAG"
+            echo "BUILD=$BUILD"
             echo "IMAGE=$REGISTRY/$PREFIX-images/$SERVICE"
             # "g" prefix keeps it valid semver even when the SHA is all digits (e.g. 0123456).
             echo "VERSION=$(yq '.version' "$CHART_DIR/Chart.yaml")-g$TAG"
           } >> "$GITHUB_ENV"
 
       - name: Build image
+        if: env.BUILD == 'true'
         run: docker build -t "$IMAGE:$TAG" -f "services/$SERVICE/infra/Dockerfile" "services/$SERVICE"
 
       - uses: actions/setup-python@v5
@@ -95,13 +98,23 @@ jobs:
           pip install pyyaml
           python3 scripts/bake_chart.py "$SERVICE" "$IMAGE" "$TAG"
 
+      - name: Chart dependencies
+        run: |
+          for url in $(yq '.dependencies[].repository' "build/$SERVICE/Chart.yaml" | grep '^https://' || true); do
+            helm repo add "$(basename "$url")" "$url" --force-update
+          done
+          helm dependency build "build/$SERVICE"
+
       - name: Validate chart
         run: |
           helm lint "build/$SERVICE"
           helm template "$SERVICE" "build/$SERVICE" | kubeconform -strict -summary
 
       - name: Package chart
-        run: helm package "build/$SERVICE" --version "$VERSION" --app-version "$TAG" -d build
+        run: |
+          ARGS=(--version "$VERSION" -d build)
+          if [ "$BUILD" = true ]; then ARGS+=(--app-version "$TAG"); fi
+          helm package "build/$SERVICE" "${ARGS[@]}"
 
       # ---- master only: publish ------------------------------------------------------
       - if: github.ref == 'refs/heads/master'
