@@ -8,7 +8,7 @@ locals {
 
   service_stack = {
     haproxy = {
-      version   = "1.0.0-ge74f787"
+      version   = "1.0.0-g1e57286"
       namespace = "proxy"
     }
   }
