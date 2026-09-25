@@ -22,26 +22,26 @@ resource "aws_ecr_lifecycle_policy" "this" {
       {
         rulePriority = 1
         description  = "Drop untagged layers/manifests after a day"
-        selection    = { 
-          tagStatus = "untagged", 
-          countType = "sinceImagePushed", 
-          countUnit = "days", 
-          countNumber = 1 
+        selection = {
+          tagStatus   = "untagged",
+          countType   = "sinceImagePushed",
+          countUnit   = "days",
+          countNumber = 1
         }
-        action       = { 
-          type = "expire" 
+        action = {
+          type = "expire"
         }
       },
       {
         rulePriority = 2
         description  = "Keep the last ${var.keep_last} versions"
-        selection    = { 
-          tagStatus = "any", 
-          countType = "imageCountMoreThan", 
-          countNumber = var.keep_last 
+        selection = {
+          tagStatus   = "any",
+          countType   = "imageCountMoreThan",
+          countNumber = var.keep_last
         }
-        action       = { 
-          type = "expire" 
+        action = {
+          type = "expire"
         }
       },
     ]
