@@ -85,6 +85,12 @@ variable "admin_principal_arns" {
   default     = []
 }
 
+variable "viewer_principal_arns" {
+  description = "IAM principals granted read-only access, including Secrets (AmazonEKSAdminViewPolicy). Used for the CI plan role, which must read Helm release state."
+  type        = list(string)
+  default     = []
+}
+
 variable "tags" {
   description = "Extra tags for taggable resources (merged with provider default_tags). Not applied to IAM roles."
   type        = map(string)
