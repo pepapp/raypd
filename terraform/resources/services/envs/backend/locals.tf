@@ -8,7 +8,7 @@ locals {
 
   service_stack = {
     web = {
-      version   = "0.1.0-gc17cfbe"
+      version   = "0.1.0-g897ec49"
       namespace = "web"
       values = {
         replicas = 2
