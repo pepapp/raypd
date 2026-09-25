@@ -10,7 +10,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    app: {{ .Values.name }}
+    app.kubernetes.io/name: {{ .Values.name }}
   ports:
     - name: http
       port: {{ $svc.port }}
@@ -43,7 +43,7 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   selector:
-    app: {{ .Values.name }}
+    app.kubernetes.io/name: {{ .Values.name }}
   ports:
     - name: http
       port: {{ $svc.port }}
