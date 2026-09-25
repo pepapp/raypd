@@ -1,7 +1,8 @@
 locals {
-  kubernetes_version  = "1.35"
-  owner               = "fadi"
-  admin_principal_arn = "arn:aws:iam::721500739616:user/fadi.saedih@gmail.com"
+  kubernetes_version    = "1.35"
+  owner                 = "fadi"
+  admin_principal_arn   = "arn:aws:iam::721500739616:user/fadi.saedih@gmail.com"
+  viewer_principal_arns = "arn:aws:iam::721500739616:role/sentinel-fadi-gha-plan-v2"
   eks_clusters = {
     gateway = {
       name       = "eks-gateway",

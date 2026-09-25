@@ -113,6 +113,18 @@ data "aws_iam_policy_document" "plan" {
     actions   = ["s3:Get*", "s3:ListBucket"]
     resources = [local.flow_logs_bucket_arn]
   }
+
+  statement {
+    sid       = "PullCharts"
+    actions   = ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
+    resources = ["arn:aws:ecr:${var.region}:${var.account_id}:repository/${local.name_prefix}-charts/*"]
+  }
+
+  statement {
+    sid       = "EcrAuthToken"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_role" "gha_plan" {

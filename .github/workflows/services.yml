@@ -86,15 +86,14 @@ jobs:
       - name: Build image
         run: docker build -t "$IMAGE:$TAG" -f "services/$SERVICE/infra/Dockerfile" "services/$SERVICE"
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Bake chart
         run: |
-          mkdir -p build
-          cp -r "$CHART_DIR" "build/$SERVICE"
-          # chart defaults <- service defaults <- the image built above
-          yq eval-all '. as $f ireduce ({}; . * $f)' "$CHART_DIR/values.yaml" "$DEFAULTS" > "build/$SERVICE/values.yaml"
-          yq -i ".image.repository = \"$IMAGE\" | .image.tag = \"$TAG\"" "build/$SERVICE/values.yaml"
-          yq -i ".name = \"$SERVICE\"" "build/$SERVICE/Chart.yaml"
-          cat "build/$SERVICE/values.yaml"
+          pip install pyyaml
+          python3 scripts/bake_chart.py "$SERVICE" "$IMAGE" "$TAG"
 
       - name: Validate chart
         run: |

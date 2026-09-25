@@ -1,0 +1,2 @@
+name: backend_services
+depends_on: [eks, ecr]
