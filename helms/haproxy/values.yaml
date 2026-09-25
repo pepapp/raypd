@@ -1,0 +1,25 @@
+haproxy:
+  replicaCount: 2
+
+  containerPorts:
+    http: 80
+    https: null
+    stat: null
+
+  service:
+    type: LoadBalancer
+    loadBalancerClass: service.k8s.aws/nlb   # AWS Load Balancer Controller
+    loadBalancerSourceRanges:
+      - 0.0.0.0/0
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing # public
+      service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+      service.beta.kubernetes.io/aws-load-balancer-attributes: load_balancing.cross_zone.enabled=true
+      service.beta.kubernetes.io/aws-load-balancer-name: sentinel-gateway-haproxy
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
