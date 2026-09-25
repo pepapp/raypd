@@ -6,6 +6,7 @@ on:
       - "terraform/**"
       - "bootstrap/**"
       - "scripts/stacks.py"
+      - ".tflint.hcl"
       - ".github/workflows/lint.yml"
   workflow_dispatch:
 
@@ -68,3 +69,25 @@ jobs:
       - name: terraform validate
         working-directory: ${{ matrix.stack }}
         run: terraform validate
+
+  tflint:
+    name: tflint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: Cache tflint plugins
+        uses: actions/cache@v4
+        with:
+          path: ~/.tflint.d/plugins
+          key: tflint-${{ hashFiles('.tflint.hcl') }}
+
+      - name: tflint --init
+        run: tflint --init --config "$GITHUB_WORKSPACE/.tflint.hcl"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}   # plugin download from GitHub releases, avoids the anonymous rate limit
+
+      - name: tflint
+        run: tflint --recursive --config "$GITHUB_WORKSPACE/.tflint.hcl" --format compact

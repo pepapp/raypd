@@ -125,6 +125,18 @@ data "aws_iam_policy_document" "plan" {
     actions   = ["ecr:GetAuthorizationToken"]
     resources = ["*"]
   }
+
+  statement {
+    sid       = "ReadLoadBalancers"
+    actions   = ["elasticloadbalancing:Describe*"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestedRegion"
+      values   = [var.region]
+    }
+  }
 }
 
 resource "aws_iam_role" "gha_plan" {
@@ -294,11 +306,22 @@ data "aws_iam_policy_document" "apply" {
     resources = ["${local.state_bucket_arn}/envs/*.tflock"]
   }
 
-  # --- Flow-logs bucket: fully owned by the poc stack ---
   statement {
     sid       = "FlowLogsBucket"
     actions   = ["s3:*"]
     resources = [local.flow_logs_bucket_arn, "${local.flow_logs_bucket_arn}/*"]
+  }
+
+  statement {
+    sid       = "ReadLoadBalancers"
+    actions   = ["elasticloadbalancing:Describe*"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestedRegion"
+      values   = [var.region]
+    }
   }
 }
 

@@ -1,7 +1,7 @@
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-RESPONSE_BODY = b"hello from server"
+RESPONSE_BODY = b"hello from backend!"
 
 
 class Handler(BaseHTTPRequestHandler):

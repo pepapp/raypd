@@ -1,6 +1,4 @@
 locals {
-  name_prefix = "sentinel-${var.owner}"
-
   vpc_definitions = {
     "vpc-gateway" = {
       region             = "us-east-2"
