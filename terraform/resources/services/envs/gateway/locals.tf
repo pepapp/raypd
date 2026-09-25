@@ -10,6 +10,13 @@ locals {
     haproxy = {
       version   = "1.0.0-g1e57286"
       namespace = "proxy"
+      values = {
+        haproxy = {
+          config = templatefile("${path.module}/haproxy.cfg.tftpl", {
+            backend_host = data.aws_lb.backend_web.dns_name
+          })
+        }
+      }
     }
   }
 

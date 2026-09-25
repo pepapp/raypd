@@ -1,0 +1,34 @@
+global
+  log stdout format raw local0
+  maxconn 1024
+
+# Re-resolve the backend NLB's DNS name at runtime (its IPs can change).
+# parse-resolv-conf = use the pod's nameserver (CoreDNS -> VPC resolver).
+resolvers cluster
+  parse-resolv-conf
+  hold valid 10s
+  resolve_retries 3
+  timeout resolve 1s
+  timeout retry 1s
+
+defaults
+  mode http
+  log global
+  option httplog
+  option forwardfor
+  timeout connect 5s
+  timeout client 30s
+  timeout server 30s
+
+frontend fe_http
+  bind :80
+  # haproxy's own liveness, independent of the backend
+  http-request return status 200 content-type text/plain string "ok" if { path /healthz }
+  default_backend be_backend
+
+backend be_backend
+  option httpchk
+  http-check send meth GET uri /
+  http-check expect status 200
+  # One slot per NLB IP (one per AZ). init-addr none: start even if DNS isn't ready yet.
+  server-template nlb 2 ${backend_host}:80 check resolvers cluster init-addr none

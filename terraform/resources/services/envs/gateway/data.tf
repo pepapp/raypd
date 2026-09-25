@@ -3,3 +3,7 @@ data "aws_eks_cluster" "this" {
 }
 
 data "aws_ecr_authorization_token" "this" {}
+
+data "aws_lb" "backend_web" {
+  name = "sentinel-backend-web"
+}

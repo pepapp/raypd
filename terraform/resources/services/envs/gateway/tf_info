@@ -1,2 +1,2 @@
 name: backend_services
-depends_on: [eks, ecr]
+depends_on: [eks, ecr, backend]
