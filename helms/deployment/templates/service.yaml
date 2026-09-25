@@ -1,16 +1,52 @@
+{{- $svc := .Values.service }}
+{{- $lb := $svc.loadBalancer }}
+# Always: stable in-cluster address (<name>.<namespace>.svc)
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ .Values.name }}
   labels:
-    app.kubernetes.io/name: {{ .Values.name }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app: {{ .Values.name }}
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: {{ .Values.name }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app: {{ .Values.name }}
   ports:
     - name: http
-      port: {{ .Values.service.port }}
-      targetPort: http
+      port: {{ $svc.port }}
+      targetPort: {{ .Values.port }}
+      protocol: TCP
+{{- if $lb.enabled }}
+{{- if not (has $lb.scheme (list "internal" "external")) }}
+{{- fail (printf "service.loadBalancer.scheme must be internal or external (got %q)" $lb.scheme) }}
+{{- end }}
+---
+# Optional: NLB for traffic from outside the cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.name }}-lb
+  labels:
+    app: {{ .Values.name }}
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: {{ ternary "internet-facing" "internal" (eq $lb.scheme "external") }}
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+    service.beta.kubernetes.io/aws-load-balancer-attributes: load_balancing.cross_zone.enabled=true
+    {{- with $lb.name }}
+    service.beta.kubernetes.io/aws-load-balancer-name: {{ . }}
+    {{- end }}
+spec:
+  type: LoadBalancer
+  loadBalancerClass: service.k8s.aws/nlb
+  {{- with $lb.sourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    app: {{ .Values.name }}
+  ports:
+    - name: http
+      port: {{ $svc.port }}
+      targetPort: {{ .Values.port }}
+      protocol: TCP
+{{- end }}

@@ -8,11 +8,16 @@ locals {
 
   service_stack = {
     web = {
-      version   = "0.1.0-gd97e4af"
-      namespace = "web"
-      values = {
-        replicas = 2
-      }
+        version   = "0.1.0-gd97e4af"
+        namespace = "web"
+        values = {
+            replicas = 2
+            service = {
+                loadBalancer = {
+                    sourceRanges = ["10.10.0.0/20", "10.10.16.0/20"] # gateway private subnets = gateway nodes
+                }
+            }
+        }
     }
   }
 

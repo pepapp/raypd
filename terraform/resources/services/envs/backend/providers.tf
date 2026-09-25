@@ -16,6 +16,12 @@ provider "aws" {
   }
 }
 
+provider "aws" {
+  alias               = "iam"
+  region              = local.region
+  allowed_account_ids = [local.account_id]
+}
+
 provider "helm" {
   kubernetes = {
     host                   = data.aws_eks_cluster.this.endpoint

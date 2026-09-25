@@ -7,4 +7,5 @@ module "services" {
   repository    = "oci://${local.registry}/sentinel-${local.owner}-charts"
   chart_version = each.value.version
   values        = try(each.value.values, {})
+  depends_on    = [module.lbc]
 }

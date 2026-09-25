@@ -7,6 +7,10 @@ port: 8080
 
 service:
   port: 80
+  loadBalancer:
+    enabled: true
+    scheme: internal
+    name: sentinel-backend-web
 
 resources:
   requests:

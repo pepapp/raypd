@@ -11,6 +11,11 @@ port: 8080
 
 service:
   port: 80
+  loadBalancer:
+    enabled: false
+    scheme: internal   # internal | external
+    sourceRanges: []
+    name: null
 
 resources:
   requests:
