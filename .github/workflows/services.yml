@@ -126,10 +126,8 @@ jobs:
       - name: Push image and chart
         if: github.ref == 'refs/heads/master'
         run: |
-          # Tags are immutable: on a re-run of the same commit, skip what's already there.
           exists() { aws ecr describe-images --repository-name "$1" --image-ids imageTag="$2" >/dev/null 2>&1; }
 
-          # Image: only for services built from our own Dockerfile.
           if [ "$BUILD" = true ]; then
             aws ecr get-login-password | docker login --username AWS --password-stdin "$REGISTRY"
             exists "$PREFIX-images/$SERVICE" "$TAG" || docker push "$IMAGE:$TAG"
@@ -138,6 +136,5 @@ jobs:
             echo "**$SERVICE** chart \`$VERSION\` (upstream image)" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-          # Chart: always.
           aws ecr get-login-password | helm registry login --username AWS --password-stdin "$REGISTRY"
           exists "$PREFIX-charts/$SERVICE" "$VERSION" || helm push "build/$SERVICE-$VERSION.tgz" "oci://$REGISTRY/$PREFIX-charts"
