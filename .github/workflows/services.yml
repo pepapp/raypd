@@ -1,0 +1,125 @@
+name: services
+
+on:
+  push:
+    paths:
+      - "services/**"
+      - "helms/**"
+      - ".github/workflows/services.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-2
+  REGISTRY: 721500739616.dkr.ecr.us-east-2.amazonaws.com
+  PREFIX: sentinel-fadi
+
+jobs:
+  services:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.find.outputs.list }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: find
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # A chart or workflow change rebuilds every service; otherwise only the services whose folder changed.
+          ALL=$(ls services)
+          if [ "$GITHUB_EVENT_NAME" = push ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            CHANGED=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
+            if grep -qE '^(helms/|\.github/workflows/services\.yml)' <<<"$CHANGED"; then
+              LIST=$ALL
+            else
+              LIST=$(grep -oE '^services/[^/]+' <<<"$CHANGED" | cut -d/ -f2 | sort -u)
+            fi
+          else
+            LIST=$ALL
+          fi
+          # Skip deleted services and folders that aren't services.
+          LIST=$(for s in $LIST; do [ -f "services/$s/infra/defaults.yaml" ] && echo "$s"; done)
+          JSON=$(jq -Rnc '[inputs | select(length > 0)]' <<<"$LIST")
+          echo "list=$JSON" >> "$GITHUB_OUTPUT"
+          echo "services: $JSON"
+
+  build:
+    needs: services
+    if: needs.services.outputs.list != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.services.outputs.list) }}
+    env:
+      SERVICE: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.18.4
+
+      - name: Install kubeconform
+        run: curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | sudo tar xz -C /usr/local/bin kubeconform
+
+      - name: Versions
+        run: |
+          DEFAULTS="services/$SERVICE/infra/defaults.yaml"
+          CHART_DIR="helms/$(yq '.type' "$DEFAULTS")"
+          TAG="${GITHUB_SHA::7}"
+          {
+            echo "DEFAULTS=$DEFAULTS"
+            echo "CHART_DIR=$CHART_DIR"
+            echo "TAG=$TAG"
+            echo "IMAGE=$REGISTRY/$PREFIX-images/$SERVICE"
+            # "g" prefix keeps it valid semver even when the SHA is all digits (e.g. 0123456).
+            echo "VERSION=$(yq '.version' "$CHART_DIR/Chart.yaml")-g$TAG"
+          } >> "$GITHUB_ENV"
+
+      - name: Build image
+        run: docker build -t "$IMAGE:$TAG" -f "services/$SERVICE/infra/Dockerfile" "services/$SERVICE"
+
+      - name: Bake chart
+        run: |
+          mkdir -p build
+          cp -r "$CHART_DIR" "build/$SERVICE"
+          # chart defaults <- service defaults <- the image built above
+          yq eval-all '. as $f ireduce ({}; . * $f)' "$CHART_DIR/values.yaml" "$DEFAULTS" > "build/$SERVICE/values.yaml"
+          yq -i ".image.repository = \"$IMAGE\" | .image.tag = \"$TAG\"" "build/$SERVICE/values.yaml"
+          yq -i ".name = \"$SERVICE\"" "build/$SERVICE/Chart.yaml"
+          cat "build/$SERVICE/values.yaml"
+
+      - name: Validate chart
+        run: |
+          helm lint "build/$SERVICE"
+          helm template "$SERVICE" "build/$SERVICE" | kubeconform -strict -summary
+
+      - name: Package chart
+        run: helm package "build/$SERVICE" --version "$VERSION" --app-version "$TAG" -d build
+
+      # ---- master only: publish ------------------------------------------------------
+      - if: github.ref == 'refs/heads/master'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_APPLY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Push image and chart
+        if: github.ref == 'refs/heads/master'
+        run: |
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$REGISTRY"
+          aws ecr get-login-password | helm registry login --username AWS --password-stdin "$REGISTRY"
+
+          # Tags are immutable: on a re-run of the same commit, skip what's already there.
+          exists() { aws ecr describe-images --repository-name "$1" --image-ids imageTag="$2" >/dev/null 2>&1; }
+          exists "$PREFIX-images/$SERVICE" "$TAG"     || docker push "$IMAGE:$TAG"
+          exists "$PREFIX-charts/$SERVICE" "$VERSION" || helm push "build/$SERVICE-$VERSION.tgz" "oci://$REGISTRY/$PREFIX-charts"
+
+          echo "**$SERVICE** chart \`$VERSION\` -> image \`$IMAGE:$TAG\`" >> "$GITHUB_STEP_SUMMARY"

@@ -1,11 +1,11 @@
-output "name" { 
-  value = aws_ecr_repository.this.name 
+output "name" {
+  value = aws_ecr_repository.this.name
 }
 
-output "arn" { 
-  value = aws_ecr_repository.this.arn 
+output "arn" {
+  value = aws_ecr_repository.this.arn
 }
 
-output "repository_url" { 
-  value = aws_ecr_repository.this.repository_url 
+output "repository_url" {
+  value = aws_ecr_repository.this.repository_url
 }
