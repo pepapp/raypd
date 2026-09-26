@@ -31,8 +31,6 @@ jobs:
       - name: Check formatting
         run: terraform fmt -check -recursive -diff
 
-  # Finds every stack (dir with backend.tf) under terraform/, ordered by tf_info depends_on.
-  # Fails here if a depends_on points at an unknown stack or forms a cycle.
   stacks:
     name: discover stacks
     runs-on: ubuntu-latest
@@ -87,7 +85,7 @@ jobs:
       - name: tflint --init
         run: tflint --init --config "$GITHUB_WORKSPACE/.tflint.hcl"
         env:
-          GITHUB_TOKEN: ${{ github.token }}   # plugin download from GitHub releases, avoids the anonymous rate limit
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: tflint
         run: tflint --recursive --config "$GITHUB_WORKSPACE/.tflint.hcl" --format compact

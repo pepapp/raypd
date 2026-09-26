@@ -19,7 +19,7 @@ def local_modules(d, seen=None):
     return seen
 
 
-stacks = {}  # name (directory name) -> {"dir", "depends_on", "paths"}
+stacks = {}
 for d, dirs, files in os.walk("terraform"):
     dirs[:] = [x for x in dirs if not x.startswith(".")]  # skip .terraform
     if "backend.tf" in files:
@@ -32,7 +32,6 @@ for d, dirs, files in os.walk("terraform"):
                     deps = [v.strip(" '\"") for v in items if v.strip(" '\"") not in ("", "null", "~")]
         stacks[os.path.basename(d)] = {"dir": d, "depends_on": deps, "paths": [d, *local_modules(d)]}
 
-# Execution order (dependencies first).
 order, done = [], set()
 while len(done) < len(stacks):
     ready = sorted(n for n, s in stacks.items() if n not in done and set(s["depends_on"]) <= done)

@@ -1,8 +1,3 @@
-# AWS Load Balancer Controller: turns Services with loadBalancerClass service.k8s.aws/nlb
-# into NLBs (IP targets, security groups from loadBalancerSourceRanges).
-#
-# Credentials via EKS Pod Identity (no IRSA - we can't create an OIDC provider in this account).
-
 locals {
   namespace       = "kube-system"
   service_account = "aws-load-balancer-controller"
@@ -27,9 +22,6 @@ resource "aws_iam_role" "this" {
   assume_role_policy = data.aws_iam_policy_document.trust.json
 }
 
-# The upstream policy for this controller version, vendored as-is:
-#   https://github.com/kubernetes-sigs/aws-load-balancer-controller/blob/v3.5.0/docs/install/iam_policy.json
-# Inline, because iam:CreatePolicy isn't granted in this account.
 resource "aws_iam_role_policy" "this" {
   provider = aws.iam
 
@@ -62,7 +54,6 @@ resource "helm_release" "this" {
     }
   })]
 
-  # Waits until the controller (and its webhook) is ready - services with an NLB depend on it.
   atomic = true
 
   # The pod must find its Pod Identity association and policy on first start.

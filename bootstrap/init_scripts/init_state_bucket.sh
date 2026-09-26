@@ -7,7 +7,7 @@ REGION="us-east-2"
 CI_ROLES="arn:aws:iam::721500739616:role/sentinel-fadi-gha-*"
 ME="$(aws sts get-caller-identity --query Arn --output text)"
 
-# 1. Create the bucket if it doesn't exist (ACLs disabled from the start).
+# 1. Create the bucket if it doesn't exist
 if aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
   echo "Bucket $BUCKET exists - applying settings."
 else
@@ -38,11 +38,6 @@ aws s3api put-bucket-lifecycle-configuration --bucket "$BUCKET" --lifecycle-conf
   }]
 }'
 
-# 5. Bucket policy:
-#    - TLS only
-#    - nobody can delete the bucket or purge state versions
-#    - only me and the project CI roles can access it (every candidate in this
-#      shared account has s3:* on all buckets; without this they could read our state)
 aws s3api put-bucket-policy --bucket "$BUCKET" --policy "{
   \"Version\": \"2012-10-17\",
   \"Statement\": [

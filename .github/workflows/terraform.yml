@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # full history, to diff against the previous tip of the branch
+          fetch-depth: 0
 
       - id: discover
         env:
@@ -56,7 +56,7 @@ jobs:
       fail-fast: false
       matrix:
         stack: ${{ fromJSON(needs.stacks.outputs.list) }}
-    # One plan per stack per branch at a time; never cancel mid-run (would leave a stale lock).
+
     concurrency:
       group: terraform-plan-${{ github.ref }}-${{ matrix.stack }}
       cancel-in-progress: false
@@ -86,10 +86,10 @@ jobs:
   apply:
     name: apply (all stacks, in order)
     needs: [stacks, plan]
-    # Must match bootstrap var.github_apply_branch - the apply role's trust only accepts this ref.
+
     if: github.ref == 'refs/heads/master' && needs.stacks.outputs.list != '[]'
     runs-on: ubuntu-latest
-    # Only one apply at a time, across all runs.
+
     concurrency:
       group: terraform-apply
       cancel-in-progress: false
@@ -107,10 +107,8 @@ jobs:
           role-to-assume: ${{ vars.AWS_APPLY_ROLE_ARN }}
           role-session-name: gha-apply-${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
-          role-duration-seconds: 7200 # EKS creation can exceed the 1h default
+          role-duration-seconds: 7200
 
-      # For each stack in dependency order: plan, then apply only if there are changes.
-      # -detailed-exitcode: 0 = no changes (skip), 2 = changes (apply), 1 = error (stop).
       - name: terraform apply (dependency order)
         env:
           STACKS: ${{ needs.stacks.outputs.list }}

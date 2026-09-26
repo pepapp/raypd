@@ -21,9 +21,7 @@ resource "aws_internet_gateway" "this" {
   tags   = merge(var.tags, { Name = "${var.name}-igw" })
 }
 
-# --------------------------------------------------------------------------
 # Public tier
-# --------------------------------------------------------------------------
 resource "aws_subnet" "public" {
   for_each = var.public_subnets # AZ => CIDR
 
@@ -75,9 +73,7 @@ resource "aws_nat_gateway" "this" {
   depends_on = [aws_internet_gateway.this]
 }
 
-# --------------------------------------------------------------------------
 # Private tier
-# --------------------------------------------------------------------------
 resource "aws_subnet" "private" {
   for_each = var.private_subnets # AZ => CIDR
 

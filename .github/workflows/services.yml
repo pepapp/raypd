@@ -31,7 +31,6 @@ jobs:
         env:
           BEFORE: ${{ github.event.before }}
         run: |
-          # A chart or workflow change rebuilds every service; otherwise only the services whose folder changed.
           ALL=$(ls services)
           if [ "$GITHUB_EVENT_NAME" = push ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
             CHANGED=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
@@ -116,7 +115,7 @@ jobs:
           if [ "$BUILD" = true ]; then ARGS+=(--app-version "$TAG"); fi
           helm package "build/$SERVICE" "${ARGS[@]}"
 
-      # ---- master only: publish ------------------------------------------------------
+      ####### master only to publish
       - if: github.ref == 'refs/heads/master'
         uses: aws-actions/configure-aws-credentials@v4
         with:

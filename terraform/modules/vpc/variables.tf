@@ -6,11 +6,6 @@ variable "name" {
 variable "cidr" {
   description = "IPv4 CIDR block for the VPC. Must not overlap with any VPC it will be peered with."
   type        = string
-
-  validation {
-    condition     = can(cidrhost(var.cidr, 0)) && tonumber(split("/", var.cidr)[1]) <= 20
-    error_message = "cidr must be a valid IPv4 CIDR of size /20 or larger."
-  }
 }
 
 variable "private_subnets" {
