@@ -1,4 +1,4 @@
-# Rapyd Sentinel – Split Architecture
+# Rapyd Sentinel
 
 ## TL;DR
 
